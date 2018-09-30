@@ -1,0 +1,21 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{ template "web-web.fullname" . }}-ingress
+  labels:
+    app: {{ template "web-web.name" . }}
+    chart: {{ template "web-web.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  rules:
+  - host: {{ .Values.host }}
+    http:
+      paths:
+      - path: /static
+        backend:
+          serviceName: {{ template "web-web.fullname" . }}-static
+          servicePort: http
+  backend:
+    serviceName: {{ template "web-web.fullname" . }}
+    servicePort: http

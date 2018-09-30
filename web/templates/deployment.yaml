@@ -1,0 +1,127 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "web-web.fullname" . }}
+  labels:
+    app: {{ template "web-web.name" . }}
+    chart: {{ template "web-web.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "web-web.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "web-web.name" . }}
+        release: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      imagePullSecrets:
+        - name: dockerhub
+      volumes:
+        - name: etc-web
+          secret:
+            secretName: etc-web
+            items:
+              - key: settings.conf
+                path: settings.conf
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}-app"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          volumeMounts:
+            - name: etc-web
+              mountPath: /etc/web
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort.app }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              httpHeaders:
+                - name: Host
+                  value: {{ .Values.host }}
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              httpHeaders:
+                - name: Host
+                  value: {{ .Values.host }}
+              path: /
+              port: http
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "web-web.fullname" . }}-static
+  labels:
+    app: {{ template "web-web.name" . }}-static
+    chart: {{ template "web-web.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "web-web.name" . }}-static
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "web-web.name" . }}-static
+        release: {{ .Release.Name }}
+    spec:
+      imagePullSecrets:
+        - name: dockerhub
+      containers:
+        - name: {{ .Chart.Name }}-static
+          image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}-static"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort.static }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}
